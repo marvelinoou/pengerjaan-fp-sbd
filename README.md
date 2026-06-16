@@ -1,152 +1,112 @@
-# Panduan Pengerjaan FP Sistem Basis Data
-## Sistem Pengelolaan Akademik Mahasiswa dan Nilai — FP-SBD-085-076-079
+# Skrip Presentasi FP Sistem Basis Data
+## Sistem Pengelolaan Akademik Mahasiswa dan Nilai
 
-Status saat ini: struktur folder (`config`, `routes`, `sql`), file dasar (`.env.example`, `.gitignore`, `README.md`, `index.js`, `package.json`) sudah di branch `main`, dan branch `dev` sudah dibuat. Panduan ini lanjut dari situ sampai selesai.
-
----
-
-## TIMELINE 2 HARI
-
-```
-SENIN (hari ini)
-  Pagi-Sore   -> Hugo (database), Lo (backend), Rapa (laporan) kerja paralel
-  Sore-Malam  -> begitu satu branch selesai, langsung merge ke dev (jangan tunggu semua)
-
-SELASA
-  Pagi  -> pull dev, test semua endpoint + trigger + view
-  Siang -> fix bug
-  Sore  -> merge dev ke main
-  Malam -> latihan demo per orang
-
-RABU -> Demo
-```
-
-Prinsip: begitu satu branch siap, langsung merge ke `dev` — jangan tunggu semua orang selesai. Ini supaya conflict ketauan lebih awal, bukan numpuk di hari kedua.
+Durasi target: 15-25 menit. Setiap bagian punya dua lapis: SKRIP (yang diomongin) dan PEMAHAMAN MATERI (konsep di baliknya, buat jaga-jaga kalau dosen nanya di luar skrip).
 
 ---
 
-## BAGIAN HUGO — Database Layer (branch `database`)
+# BAGIAN 1 — PPT
 
-```cmd
-git clone https://github.com/username-lo/FP-SBD-085-076-079.git
-cd FP-SBD-085-076-079
-git checkout dev
-git pull origin dev
-git checkout -b database
-code .
-```
+## Slide 1: Judul
 
-### `sql\ddl.sql`
+**SKRIP:**
+"Selamat pagi/siang, perkenalkan kami dari kelompok FP-SBD-085-076-079. Saya Marvelino Davas, bersama rekan saya Muhammad Hugo Rayandra dan Raffa Al Azmi. Hari ini kami akan mempresentasikan Final Project mata kuliah Sistem Basis Data, yaitu Sistem Pengelolaan Akademik Mahasiswa dan Nilai."
+
+**PEMAHAMAN MATERI:**
+Tidak ada konsep teknis di slide ini, tapi pastikan nama dan NRP yang disebut sudah benar dan urutannya konsisten dengan yang tertulis di slide — kelihatan sepele tapi sering jadi hal pertama yang dikoreksi dosen kalau salah sebut nama rekan sendiri.
+
+---
+
+## Slide 2: Nama Sistem
+
+**SKRIP:**
+"Sistem ini kami beri nama Sistem Monitoring Nilai Mahasiswa, yang secara teknis di laporan kami sebut Sistem Pengelolaan Akademik Mahasiswa dan Nilai. Fokus utama sistem ini adalah membantu dosen wali memantau perkembangan akademik mahasiswa bimbingannya."
+
+**PEMAHAMAN MATERI:**
+Penting ditegaskan sejak awal: target pengguna sistem ini adalah DOSEN WALI, bukan mahasiswa. Ini krusial karena seluruh keputusan desain fitur tambahan (mengulang, alumni) dibuat dari sudut pandang kebutuhan dosen wali memonitor, bukan mahasiswa mengakses data sendiri. Kalau dosen tanya "kenapa nggak ada login mahasiswa?", jawabannya karena scope sistem ini memang backend monitoring untuk dosen wali, bukan portal akademik mahasiswa.
+
+---
+
+## Slide 3: Identifikasi Masalah
+
+**SKRIP:**
+"Ada tiga masalah utama yang mendasari pembuatan sistem ini. Pertama, dengan jumlah mahasiswa yang banyak, dosen wali kesulitan memantau perkembangan setiap mahasiswa secara individual dan berkelanjutan. Kedua, dosen wali kesulitan mengidentifikasi mahasiswa yang membutuhkan perhatian khusus, misalnya yang mengulang mata kuliah atau mengalami penurunan performa akademik. Ketiga, proses pencatatan dan pelaporan data akademik masih manual, sehingga tidak efisien dan rentan terhadap inkonsistensi data."
+
+**PEMAHAMAN MATERI:**
+Tiga masalah ini bukan cuma pemanasan presentasi — masing-masing punya jawaban konkret di sistem yang dibangun. Masalah pertama dijawab oleh keberadaan backend API yang bisa diakses kapan saja tanpa proses manual. Masalah kedua dijawab langsung oleh dua fitur tambahan (view mengulang dan tabel alumni) yang akan dibahas nanti. Masalah ketiga dijawab oleh trigger otomatis yang menghilangkan kebutuhan pencatatan manual saat status mahasiswa berubah. Kalau dosen tanya "mana buktinya sistem ini menjawab masalah yang disebutkan?", lo bisa langsung tarik balik ke tiga poin ini.
+
+---
+
+## Slide 4: Tujuan
+
+**SKRIP:**
+"Berdasarkan masalah tersebut, kami menetapkan empat tujuan. Pertama, merancang skema basis data relasional yang komprehensif untuk mendukung kebutuhan pengelolaan dan monitoring data akademik. Kedua, mengimplementasikan struktur penyimpanan data yang efisien melalui normalisasi hingga bentuk normal ketiga. Ketiga, membangun fitur monitoring akademik yang dapat diakses melalui backend, tanpa antarmuka pengguna. Keempat, menyediakan informasi yang mendukung pengambilan keputusan oleh dosen wali, seperti ranking IPK, daftar mata kuliah yang diulang, dan status mahasiswa lulus atau pindah."
+
+**PEMAHAMAN MATERI:**
+Poin ketiga ini penting ditegaskan secara eksplisit: TANPA FRONTEND. Ini bukan kekurangan, tapi keputusan desain yang sesuai scope FP. Kalau dosen tanya "kenapa nggak dibuat web-nya juga?", jawabannya: scope FP ini fokus pada perancangan basis data dan logikanya, bukan UI/UX, dan backend REST API sudah cukup untuk membuktikan seluruh logika data berjalan dengan benar — pembuktian dilakukan lewat curl/Postman, bukan browser.
+
+---
+
+## Slide 5: Desain ERD
+
+**SKRIP:**
+"Ini adalah hasil akhir desain basis data kami, yang terdiri dari sembilan tabel. Enam tabel inti — Mahasiswa, Dosen, Mata Kuliah, Semester, KRS, dan Nilai — adalah hasil dari proses normalisasi data mentah hingga bentuk normal ketiga. Tabel Dosen Mengajar adalah tabel penghubung untuk relasi banyak-ke-banyak antara dosen, mata kuliah, dan semester. Dua tabel lainnya, Mahasiswa Alumni dan Trash, adalah tabel tambahan yang tidak berasal dari normalisasi data mentah, melainkan dibuat khusus untuk memenuhi kebutuhan tambahan dari dosen wali, yang akan kami jelaskan lebih detail di slide berikutnya."
+
+**PEMAHAMAN MATERI:**
+Ini saat paling tepat untuk menjelaskan relasi PK-FK secara singkat kalau dosen minta detail. Hal yang harus dihafal: Mahasiswa terhubung ke KRS (satu-ke-banyak), Mata Kuliah dan Semester juga terhubung ke KRS (masing-masing satu-ke-banyak), KRS terhubung ke Nilai (satu-ke-satu, karena satu KRS punya tepat satu nilai), Dosen terhubung ke Dosen Mengajar, dan Mahasiswa terhubung ke Mahasiswa Alumni (satu-ke-banyak, meski secara praktik biasanya satu mahasiswa cuma punya satu entri alumni). Trash sengaja tidak punya relasi FK ke tabel apa pun karena dia adalah arsip generik lintas tabel — desain ini sengaja dibuat fleksibel, bukan terikat ke satu tabel tertentu.
+
+Kalau ditanya soal kasus mengulang: tunjuk ke tabel KRS, jelaskan bahwa PK aslinya adalah gabungan tiga kolom (nrp, kode_mk, id_semester), sehingga satu mahasiswa bisa punya lebih dari satu entri KRS dengan kode_mk yang sama, selama id_semester-nya berbeda.
+
+---
+
+## Slide 6: Pemrosesan Data
+
+**SKRIP:**
+"Dari sisi arsitektur, sistem ini terbagi dalam dua lapisan. Lapisan aplikasi menggunakan Node.js dan Express.js untuk menangani protokol HTTP, routing API, dan enkapsulasi data dalam format JSON. Lapisan basis data menggunakan MySQL sebagai mesin komputasi relasional utama. Untuk kalkulasi yang kompleks, seperti perhitungan IPK dan akumulasi SKS, kami serahkan seratus persen ke fungsi bawaan MySQL, yaitu SUM dan ROUND, yang dipanggil pada endpoint nilai per IPK."
+
+**PEMAHAMAN MATERI:**
+Poin penting di sini: kenapa kalkulasi IPK dilakukan di level database (SQL), bukan di level aplikasi (JavaScript)? Jawaban yang baik: MySQL dirancang khusus untuk operasi agregasi data dalam jumlah besar secara efisien — JOIN antar tabel dan SUM/GROUP BY itu pekerjaan native database engine. Kalau dikerjakan di Node.js, backend harus menarik semua baris data mentah dulu ke memori aplikasi, baru menghitung manual di JavaScript — itu boros memori dan lebih lambat dibanding membiarkan MySQL yang sudah dioptimasi untuk itu mengerjakannya langsung.
+
+Rumus IPK yang dipakai: SUM(nilai_angka × sks) dibagi SUM(sks), dibulatkan dua desimal. Ini weighted average berdasarkan bobot SKS — bukan rata-rata biasa, karena mata kuliah dengan SKS lebih besar harus punya pengaruh lebih besar terhadap IPK.
+
+---
+
+## Slide 7: Abstraksi Data Menggunakan View
+
+**SKRIP:**
+"Salah satu prinsip yang kami terapkan adalah abstraksi data menggunakan view. Tujuannya untuk memisahkan skema logis basis data yang rumit dari visualisasi data di tingkat aplikasi, sehingga backend developer tidak perlu memahami detail kerumitan struktur tabel penyusun data historis. Studi kasus konkretnya adalah pelacakan mahasiswa yang mengulang mata kuliah, yang membutuhkan operasi relasi multi-tabel lewat JOIN, pengelompokan data lewat GROUP BY, dan filter kondisi berbasis hasil fungsi agregasi lewat HAVING."
+
+**PEMAHAMAN MATERI:**
+Ini bagian paling sering ditanya detail teknisnya, jadi harus benar-benar paham, bukan cuma hafal. View yang dipakai adalah `view_mahasiswa_mengulang`:
 
 ```sql
-CREATE DATABASE akademik_db;
-USE akademik_db;
+CREATE VIEW view_mahasiswa_mengulang AS
+SELECT m.nrp, m.nama, mk.kode_mk, mk.nama_mk, COUNT(*) AS jumlah_ambil
+FROM krs k
+JOIN mahasiswa m ON k.nrp = m.nrp
+JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
+GROUP BY m.nrp, m.nama, mk.kode_mk, mk.nama_mk
+HAVING COUNT(*) > 1;
+```
 
-CREATE TABLE mahasiswa (
-    nrp VARCHAR(20) PRIMARY KEY,
-    nama VARCHAR(100) NOT NULL,
-    angkatan YEAR NOT NULL,
-    program_studi VARCHAR(50) NOT NULL,
-    status ENUM('aktif','cuti','lulus','keluar') DEFAULT 'aktif'
-);
+Cara baca query ini kalau diminta jelaskan baris per baris: JOIN menggabungkan data KRS dengan nama mahasiswa dari tabel Mahasiswa dan nama mata kuliah dari tabel Mata Kuliah (karena tabel KRS sendiri cuma punya kode/nrp, bukan nama). GROUP BY mengelompokkan semua baris KRS yang punya kombinasi nrp dan kode_mk yang sama jadi satu grup. COUNT(*) menghitung berapa baris ada dalam satu grup. HAVING COUNT(*) > 1 menyaring, hanya menampilkan grup yang punya lebih dari satu baris — artinya mahasiswa itu mengambil mata kuliah yang sama lebih dari sekali.
 
-CREATE TABLE dosen (
-    nip VARCHAR(20) PRIMARY KEY,
-    nama VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL
-);
+Kalau ditanya beda WHERE dan HAVING: WHERE menyaring baris sebelum dikelompokkan, HAVING menyaring grup setelah dikelompokkan — dipakai HAVING di sini karena syarat penyaringannya (COUNT > 1) baru bisa dihitung setelah pengelompokan terjadi.
 
-CREATE TABLE mata_kuliah (
-    kode_mk VARCHAR(10) PRIMARY KEY,
-    nama_mk VARCHAR(100) NOT NULL,
-    sks TINYINT NOT NULL
-);
+Keuntungan pakai view: backend cukup memanggil `SELECT * FROM view_mahasiswa_mengulang`, tidak perlu menulis ulang JOIN yang panjang di kode JavaScript setiap kali endpoint itu dipanggil.
 
-CREATE TABLE semester (
-    id_semester INT AUTO_INCREMENT PRIMARY KEY,
-    tahun YEAR NOT NULL,
-    periode ENUM('ganjil','genap') NOT NULL
-);
+---
 
-CREATE TABLE krs (
-    id_krs INT AUTO_INCREMENT PRIMARY KEY,
-    nrp VARCHAR(20) NOT NULL,
-    kode_mk VARCHAR(10) NOT NULL,
-    id_semester INT NOT NULL,
-    status ENUM('aktif','batal') DEFAULT 'aktif',
-    FOREIGN KEY (nrp) REFERENCES mahasiswa(nrp),
-    FOREIGN KEY (kode_mk) REFERENCES mata_kuliah(kode_mk),
-    FOREIGN KEY (id_semester) REFERENCES semester(id_semester)
-);
+## Slide 8: Otomatisasi Terintegrasi via Database Trigger (BEFORE DELETE)
 
-CREATE TABLE nilai (
-    id_nilai INT AUTO_INCREMENT PRIMARY KEY,
-    id_krs INT NOT NULL UNIQUE,
-    nilai_huruf ENUM('A','AB','B','BC','C','D','E') NOT NULL,
-    nilai_angka DECIMAL(3,2) NOT NULL,
-    FOREIGN KEY (id_krs) REFERENCES krs(id_krs)
-);
+**SKRIP:**
+"Untuk otomatisasi dan audit, kami menggunakan database trigger, yaitu blok kode SQL prosedural yang dieksekusi otomatis oleh database engine sebagai respons terhadap peristiwa INSERT, UPDATE, atau DELETE. Mekanisme pertama adalah BEFORE DELETE, yang kami implementasikan sebagai empat trigger terpisah, masing-masing spesifik untuk satu tabel: before_delete_mahasiswa, before_delete_dosen, before_delete_mata_kuliah, dan before_delete_krs. Setiap trigger berjalan sebelum baris data dihapus dari tabel master yang bersangkutan, memanfaatkan fungsi JSON_OBJECT untuk membungkus seluruh data lama ke dalam format dokumen semistruktur, lalu menyimpannya ke tabel trash."
 
-CREATE TABLE dosen_mengajar (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nip VARCHAR(20) NOT NULL,
-    kode_mk VARCHAR(10) NOT NULL,
-    id_semester INT NOT NULL,
-    FOREIGN KEY (nip) REFERENCES dosen(nip),
-    FOREIGN KEY (kode_mk) REFERENCES mata_kuliah(kode_mk),
-    FOREIGN KEY (id_semester) REFERENCES semester(id_semester)
-);
+**PEMAHAMAN MATERI:**
+Kalau dosen tanya "kenapa empat trigger terpisah, bukan satu saja?" — jawabannya: trigger di MySQL itu sifatnya per tabel, tidak bisa satu trigger menangani DELETE dari banyak tabel berbeda sekaligus. Jadi keempatnya memang harus didefinisikan terpisah, meskipun logikanya serupa (sama-sama menyalin OLD data ke trash).
 
-CREATE TABLE trash (
-    id_trash INT AUTO_INCREMENT PRIMARY KEY,
-    nama_tabel VARCHAR(50) NOT NULL,
-    data_json JSON NOT NULL,
-    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_by VARCHAR(100)
-);
-
-CREATE TABLE mahasiswa_alumni (
-    id_alumni INT AUTO_INCREMENT PRIMARY KEY,
-    nrp VARCHAR(20) NOT NULL,
-    nama VARCHAR(100) NOT NULL,
-    angkatan YEAR NOT NULL,
-    program_studi VARCHAR(50) NOT NULL,
-    keterangan ENUM('lulus','pindah','keluar') NOT NULL,
-    tanggal_arsip TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (nrp) REFERENCES mahasiswa(nrp)
-);
-
-DELIMITER $$
-
-CREATE TRIGGER before_delete_mahasiswa
-BEFORE DELETE ON mahasiswa FOR EACH ROW
-BEGIN
-    INSERT INTO trash (nama_tabel, data_json, deleted_by)
-    VALUES ('mahasiswa', JSON_OBJECT(
-        'nrp', OLD.nrp, 'nama', OLD.nama,
-        'angkatan', OLD.angkatan, 'program_studi', OLD.program_studi,
-        'status', OLD.status
-    ), 'system');
-END$$
-
-CREATE TRIGGER before_delete_dosen
-BEFORE DELETE ON dosen FOR EACH ROW
-BEGIN
-    INSERT INTO trash (nama_tabel, data_json, deleted_by)
-    VALUES ('dosen', JSON_OBJECT(
-        'nip', OLD.nip, 'nama', OLD.nama, 'email', OLD.email
-    ), 'system');
-END$$
-
-CREATE TRIGGER before_delete_mata_kuliah
-BEFORE DELETE ON mata_kuliah FOR EACH ROW
-BEGIN
-    INSERT INTO trash (nama_tabel, data_json, deleted_by)
-    VALUES ('mata_kuliah', JSON_OBJECT(
-        'kode_mk', OLD.kode_mk, 'nama_mk', OLD.nama_mk, 'sks', OLD.sks
-    ), 'system');
-END$$
-
+Contoh isi salah satu trigger:
+```sql
 CREATE TRIGGER before_delete_krs
 BEFORE DELETE ON krs FOR EACH ROW
 BEGIN
@@ -156,544 +116,334 @@ BEGIN
         'kode_mk', OLD.kode_mk, 'id_semester', OLD.id_semester,
         'status', OLD.status
     ), 'system');
-END$$
+END;
+```
 
+`OLD` di sini merujuk ke nilai kolom SEBELUM baris itu dihapus — ini keyword khusus yang hanya bisa dipakai di dalam trigger. `BEFORE DELETE` artinya kode ini dijalankan sebelum penghapusan benar-benar terjadi, sehingga datanya masih bisa diselamatkan ke trash dulu sebelum hilang permanen dari tabel asalnya.
+
+---
+
+## Slide 9: AFTER UPDATE — Sistem Pipeline Arsip Otomatis
+
+**SKRIP:**
+"Mekanisme kedua adalah AFTER UPDATE, yang berjalan setelah kolom status pada tabel mahasiswa diperbarui. Trigger ini memicu penyalinan data riwayat hidup secara otomatis ke tabel mahasiswa_alumni, saat mahasiswa dinyatakan lulus, keluar, atau pindah. Penting untuk ditekankan: data pada tabel mahasiswa asli tidak dihapus. Tabel mahasiswa_alumni adalah arsip tambahan, bukan pemindahan data."
+
+**PEMAHAMAN MATERI:**
+Ini bagian yang paling rawan salah ucap kalau tidak hati-hati — jangan sampai terlontar kata "dipindahkan" atau "memindahkan", karena itu salah secara teknis. Kata yang benar adalah MENYALIN atau COPY. Penjelasannya: setelah trigger ini jalan, kalau lo SELECT dari tabel mahasiswa, datanya masih ada di sana, hanya statusnya yang berubah. Yang baru ditambahkan adalah baris baru di tabel mahasiswa_alumni — itu salinan, bukan pemindahan dari mahasiswa ke mahasiswa_alumni.
+
+Kode triggernya:
+```sql
 CREATE TRIGGER after_update_status_mahasiswa
 AFTER UPDATE ON mahasiswa
 FOR EACH ROW
 BEGIN
-    IF NEW.status IN ('lulus','keluar') AND OLD.status != NEW.status THEN
+    IF NEW.status IN ('lulus','keluar','pindah') AND OLD.status != NEW.status THEN
         INSERT INTO mahasiswa_alumni (nrp, nama, angkatan, program_studi, keterangan)
         VALUES (NEW.nrp, NEW.nama, NEW.angkatan, NEW.program_studi, NEW.status);
     END IF;
-END$$
-
-DELIMITER ;
+END;
 ```
 
-### `sql\dml.sql`
-
-```sql
-USE akademik_db;
-
-INSERT INTO semester (tahun, periode) VALUES
-(2024,'ganjil'),(2024,'genap'),(2025,'ganjil');
-
-INSERT INTO mahasiswa VALUES
-('5027231001','Andi Pratama',2023,'Informatika','aktif'),
-('5027231002','Budi Santoso',2023,'Informatika','aktif'),
-('5027231003','Citra Dewi',2023,'Sistem Informasi','aktif'),
-('5027231004','Dani Rahmat',2023,'Sistem Informasi','aktif'),
-('5027231005','Eka Putri',2022,'Informatika','aktif'),
-('5027231006','Fajar Nugroho',2022,'Teknik Komputer','aktif'),
-('5027231007','Gita Kusuma',2023,'Sistem Informasi','cuti'),
-('5027231008','Hadi Santoso',2021,'Informatika','lulus');
-
-INSERT INTO dosen VALUES
-('197501012000031001','Dr. Hendra Wijaya','hendra@its.ac.id'),
-('198003052005012002','Dr. Siti Aminah','siti@its.ac.id'),
-('197812152003121003','Prof. Budi Raharjo','budi@its.ac.id');
-
-INSERT INTO mata_kuliah VALUES
-('IF2110','Algoritma dan Pemrograman',3),
-('IF2210','Struktur Data',3),
-('IF2310','Basis Data',3),
-('IF2410','Sistem Operasi',3),
-('IF2510','Jaringan Komputer',3);
-
-INSERT INTO krs (nrp, kode_mk, id_semester, status) VALUES
-('5027231001','IF2110',1,'aktif'),
-('5027231001','IF2210',1,'aktif'),
-('5027231001','IF2310',2,'aktif'),
-('5027231001','IF2410',2,'aktif'),
-('5027231002','IF2110',1,'aktif'),
-('5027231002','IF2210',1,'aktif'),
-('5027231002','IF2310',2,'aktif'),
-('5027231003','IF2110',1,'aktif'),
-('5027231003','IF2210',1,'aktif'),
-('5027231003','IF2510',3,'aktif'),
-('5027231004','IF2110',1,'aktif'),
-('5027231004','IF2310',2,'aktif'),
-('5027231005','IF2110',1,'aktif'),
-('5027231005','IF2410',2,'aktif'),
-('5027231005','IF2510',3,'aktif'),
-('5027231006','IF2110',1,'aktif'),
-('5027231006','IF2210',1,'aktif'),
-('5027231006','IF2110',2,'aktif');
-
-INSERT INTO nilai (id_krs, nilai_huruf, nilai_angka) VALUES
-(1,'A',4.00),(2,'AB',3.50),(3,'A',4.00),(4,'AB',3.50),
-(5,'B',3.00),(6,'A',4.00),(7,'B',3.00),
-(8,'AB',3.50),(9,'B',3.00),(10,'AB',3.50),
-(11,'BC',2.50),(12,'B',3.00),
-(13,'A',4.00),(14,'A',4.00),(15,'AB',3.50),
-(16,'C',2.00),(17,'BC',2.50),(18,'B',3.00);
-
-INSERT INTO dosen_mengajar (nip, kode_mk, id_semester) VALUES
-('197501012000031001','IF2110',1),
-('198003052005012002','IF2210',1),
-('197812152003121003','IF2310',2),
-('197501012000031001','IF2410',2),
-('198003052005012002','IF2510',3);
-
-INSERT INTO mahasiswa_alumni (nrp, nama, angkatan, program_studi, keterangan) VALUES
-('5027231008','Hadi Santoso',2021,'Informatika','lulus');
-```
-
-### `sql\query.sql`
-
-```sql
-USE akademik_db;
-
--- 1. Transkrip lengkap satu mahasiswa
-SELECT m.nrp, m.nama, mk.kode_mk, mk.nama_mk, mk.sks,
-       s.tahun, s.periode, n.nilai_huruf, n.nilai_angka
-FROM mahasiswa m
-JOIN krs k ON m.nrp = k.nrp
-JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-JOIN semester s ON k.id_semester = s.id_semester
-JOIN nilai n ON k.id_krs = n.id_nilai
-WHERE m.nrp = '5027231001';
-
--- 2. Hitung IPK satu mahasiswa
-SELECT m.nrp, m.nama,
-       ROUND(SUM(n.nilai_angka * mk.sks) / SUM(mk.sks), 2) AS ipk,
-       SUM(mk.sks) AS total_sks
-FROM mahasiswa m
-JOIN krs k ON m.nrp = k.nrp
-JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-JOIN nilai n ON k.id_krs = n.id_nilai
-WHERE m.nrp = '5027231001' AND k.status = 'aktif'
-GROUP BY m.nrp, m.nama;
-
--- 3. Ranking IPK semua mahasiswa
-SELECT m.nrp, m.nama, m.program_studi,
-       ROUND(SUM(n.nilai_angka * mk.sks) / SUM(mk.sks), 2) AS ipk,
-       SUM(mk.sks) AS total_sks
-FROM mahasiswa m
-JOIN krs k ON m.nrp = k.nrp
-JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-JOIN nilai n ON k.id_krs = n.id_nilai
-WHERE k.status = 'aktif'
-GROUP BY m.nrp, m.nama, m.program_studi
-ORDER BY ipk DESC;
-
--- 4. KHS per semester
-SELECT m.nama, mk.nama_mk, mk.sks, n.nilai_huruf, n.nilai_angka,
-       s.tahun, s.periode
-FROM krs k
-JOIN mahasiswa m ON k.nrp = m.nrp
-JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-JOIN nilai n ON k.id_krs = n.id_nilai
-JOIN semester s ON k.id_semester = s.id_semester
-WHERE m.nrp = '5027231001' AND s.id_semester = 1;
-
--- 5. Dosen mengajar matkul apa saja
-SELECT d.nama AS dosen, mk.nama_mk, mk.sks, s.tahun, s.periode
-FROM dosen_mengajar dm
-JOIN dosen d ON dm.nip = d.nip
-JOIN mata_kuliah mk ON dm.kode_mk = mk.kode_mk
-JOIN semester s ON dm.id_semester = s.id_semester;
-
--- 6. Lihat isi trash
-SELECT * FROM trash ORDER BY deleted_at DESC;
-
--- 7. View: matkul yang diulang per mahasiswa
-CREATE VIEW view_mahasiswa_mengulang AS
-SELECT m.nrp, m.nama, mk.kode_mk, mk.nama_mk, COUNT(*) AS jumlah_ambil
-FROM krs k
-JOIN mahasiswa m ON k.nrp = m.nrp
-JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-GROUP BY m.nrp, m.nama, mk.kode_mk, mk.nama_mk
-HAVING COUNT(*) > 1;
-
-SELECT * FROM view_mahasiswa_mengulang;
-```
-
-### Commit & Push (Hugo)
-
-```cmd
-git add .
-git commit -m "feat: DDL, trigger, DML, query, view mengulang, tabel alumni"
-git push origin database
-```
+`NEW` merujuk ke nilai kolom SETELAH UPDATE, `OLD` merujuk ke nilai SEBELUM UPDATE. Kondisi `OLD.status != NEW.status` penting — ini memastikan trigger hanya jalan kalau status BERUBAH, bukan setiap kali ada UPDATE apa pun di tabel mahasiswa (misalnya kalau cuma ganti nama, trigger ini tidak akan terpicu).
 
 ---
 
-## BAGIAN LO — Backend Layer (branch `backend`)
+## Slide 10: Optimalisasi Performa dan Integritas Referensial
+
+**SKRIP:**
+"Dari sisi performa, kami menerapkan connection pooling menggunakan metode mysql.createPool pada file config/mysql.js, yang mengeliminasi overhead pemborosan waktu akibat siklus jabat tangan TCP yang berulang setiap kali ada pemanggilan endpoint API. Dari sisi integritas data, kami menerapkan foreign key constraint yang mengunci konsistensi data antar tabel relasional. Sebagai analisis arsitektur, kami juga ingin menjelaskan kenapa data alumni di-copy, bukan di-cut: atribut nrp pada tabel mahasiswa adalah fondasi relasi utama bagi tabel KRS dan tabel Nilai. Jika data alumni dihapus total dari tabel mahasiswa dan dipindahkan ke tabel eksternal, seluruh riwayat nilai pada masa lampau akan kehilangan relasi induknya, atau menjadi orphan record, dan merusak validitas laporan akademik."
+
+**PEMAHAMAN MATERI:**
+Connection pooling: tanpa pooling, setiap kali ada request masuk ke backend, Node.js harus membuka koneksi baru ke MySQL (proses TCP handshake), lalu menutupnya lagi setelah selesai — ini mahal secara waktu kalau dilakukan berulang-ulang untuk setiap request. Dengan pool, sejumlah koneksi dibuka di awal dan disimpan dalam "kolam", lalu dipakai bergantian oleh request yang masuk, tanpa perlu buka-tutup koneksi setiap saat.
+
+Foreign key constraint: ini alasan teknis kenapa kemarin sempat muncul error pas mencoba menghapus KRS yang masih punya entri Nilai terkait — MySQL menolak penghapusan itu karena akan menyisakan baris Nilai yang menunjuk ke KRS yang sudah tidak ada (orphan record). Constraint inilah yang menjaga supaya hal itu tidak terjadi.
+
+Slide ini juga jadi pasangan logis dari slide 9 — kalau dosen baru saja dengar "menyalin, bukan memindahkan" di slide sebelumnya, slide ini menjawab PERTANYAAN LANJUTANNYA: "kenapa harus menyalin, bukan memindahkan?" Jawabannya ya karena alasan integritas referensial ini.
+
+---
+
+## Slide 11 (Penutup PPT / Link GitHub)
+
+**SKRIP:**
+"Baik, itu adalah rancangan dan arsitektur sistem kami secara keseluruhan. Selanjutnya, kami akan menunjukkan repository project ini di GitHub, sebelum melanjutkan ke demo langsung melalui terminal."
+
+**PEMAHAMAN MATERI:**
+Tidak ada konten teknis baru, ini transisi murni. Pastikan tab GitHub sudah dibuka di background sebelum bagian ini dimulai, supaya tidak ada waktu terbuang menunggu loading saat pindah dari slide ke browser.
+
+---
+
+# BAGIAN 2 — GITHUB
+
+**SKRIP:**
+"Ini adalah repository kami di GitHub, dengan nama FP-SBD-085-076-079. Strukturnya terdiri dari folder config yang menyimpan konfigurasi koneksi database, folder routes yang menyimpan seluruh endpoint API per entitas, dan folder sql yang menyimpan DDL, DML, dan query. Ada juga folder docs yang menyimpan laporan, ERD, dan dokumentasi normalisasi. File index.js adalah entry point dari aplikasi backend kami."
+
+**PEMAHAMAN MATERI:**
+Kalau dosen minta dibuka salah satu file langsung dari GitHub (bukan dari terminal), siap saja — isinya sama dengan yang akan dijelaskan detail di sesi penjelasan kode nanti. Tidak perlu jelaskan detail isi file di sini, cukup tunjukkan struktur foldernya saja supaya transisi ke demo terminal tidak kepanjangan.
+
+---
+
+# BAGIAN 3 — DEMO LIVE TERMINAL
+
+## Persiapan (sebelum mulai berbicara ke dosen)
+Pastikan sudah dilakukan SEBELUM sesi presentasi mulai:
+```cmd
+mysql -u root -p -e "DROP DATABASE IF EXISTS akademik_db;"
+mysql -u root -p < sql\ddl.sql
+mysql -u root -p akademik_db < sql\dml.sql
+```
+Server BELUM dinyalakan — supaya bagian menyalakan server kelihatan sebagai bagian dari demo live, bukan sudah disiapkan dari sebelumnya.
+
+## Test Case 1: Menyalakan Server
+
+**SKRIP:**
+"Sekarang saya akan menyalakan server backend kami secara langsung."
 
 ```cmd
-cd FP-SBD-085-076-079
-git checkout dev
-git pull origin dev
-git checkout -b backend
-code .
+node index.js
 ```
 
-### `config\mysql.js`
+"Seperti yang terlihat, server sudah berjalan di port 3000."
+
+**PEMAHAMAN MATERI:**
+Kalau muncul error di sini (port sudah terpakai, dll), jangan panik — biasanya disebabkan oleh proses sebelumnya yang belum benar-benar berhenti. Solusi cepat: cek dengan `netstat -ano | findstr :3000` untuk melihat proses apa yang memakai port itu, atau cukup tutup semua terminal lama dan buka yang baru.
+
+## Test Case 2: Endpoint Dasar — Semua Mahasiswa
+
+**SKRIP:**
+"Pertama, saya akan mengambil seluruh data mahasiswa lewat endpoint GET /mahasiswa."
+
+```cmd
+curl http://localhost:3000/mahasiswa
+```
+
+"Seperti yang terlihat, muncul delapan data mahasiswa lengkap dengan status masing-masing, termasuk yang aktif, cuti, dan lulus."
+
+**PEMAHAMAN MATERI:**
+Ini endpoint paling sederhana, query-nya cukup `SELECT * FROM mahasiswa`. Tujuan menampilkan ini di awal adalah membuktikan koneksi backend ke database berjalan normal sebelum masuk ke endpoint yang lebih kompleks.
+
+## Test Case 3: Ranking IPK
+
+**SKRIP:**
+"Selanjutnya, saya akan menunjukkan endpoint untuk ranking IPK seluruh mahasiswa."
+
+```cmd
+curl http://localhost:3000/nilai/ipk
+```
+
+"Hasil ini diurutkan dari IPK tertinggi ke terendah, dihitung menggunakan weighted average berdasarkan SKS masing-masing mata kuliah."
+
+**PEMAHAMAN MATERI:**
+Kalau ditanya kenapa weighted average bukan rata-rata biasa: karena mata kuliah dengan SKS lebih besar (misalnya 4 SKS) seharusnya punya bobot lebih besar terhadap IPK dibanding mata kuliah 2 SKS. Rumus yang dipakai: SUM(nilai_angka × sks) dibagi SUM(sks).
+
+## Test Case 4: Fitur Tambahan — Mahasiswa yang Mengulang
+
+**SKRIP:**
+"Ini adalah salah satu fitur tambahan yang diminta oleh dosen wali, yaitu daftar mahasiswa yang mengulang mata kuliah."
+
+```cmd
+curl http://localhost:3000/mahasiswa/mengulang/list
+```
+
+"Terlihat di sini Fajar Nugroho mengambil mata kuliah Algoritma dan Pemrograman sebanyak dua kali, dengan jumlah_ambil bernilai 2."
+
+**PEMAHAMAN MATERI:**
+Ini hasil dari view yang sudah dijelaskan di slide 7. Kalau dosen minta jelaskan ulang query-nya di sini, bisa diulang singkat: GROUP BY per nrp dan kode_mk, lalu HAVING COUNT lebih dari satu.
+
+## Test Case 5: Fitur Tambahan — Mahasiswa Alumni
+
+**SKRIP:**
+"Fitur tambahan kedua adalah daftar mahasiswa yang telah lulus atau pindah."
+
+```cmd
+curl http://localhost:3000/mahasiswa/alumni/list
+```
+
+"Saat ini baru muncul satu data, yaitu Hadi Santoso yang sudah lulus. Nanti di sesi CRUD, kami akan menunjukkan bagaimana data baru bisa masuk ke tabel ini secara otomatis."
+
+**PEMAHAMAN MATERI:**
+Ini sengaja ditunjukkan SEBELUM CRUD supaya nanti pas demo trigger di sesi CRUD, dosen punya pembanding "sebelum" dan "sesudah" yang jelas — sebelumnya cuma satu data, nanti setelah UPDATE status akan bertambah.
+
+## Test Case 6: Endpoint Trash
+
+**SKRIP:**
+"Terakhir, kami juga menyediakan endpoint untuk melihat arsip data yang telah dihapus, sebagai bukti bahwa mekanisme soft-delete kami bisa diakses bukan hanya dari level database, tapi juga dari backend."
+
+```cmd
+curl http://localhost:3000/trash
+```
+
+"Saat ini masih kosong karena belum ada data yang dihapus. Nanti akan kami tunjukkan isinya setelah sesi CRUD."
+
+**PEMAHAMAN MATERI:**
+Sama seperti test case 5, ini sengaja ditunjukkan kosong dulu sebagai pembanding sebelum-sesudah pada sesi CRUD nanti.
+
+---
+
+# BAGIAN 4 — CRUD
+
+**SKRIP (transisi):**
+"Sekarang kami akan menunjukkan operasi CRUD secara langsung melalui MySQL, sekaligus membuktikan trigger yang sudah kami jelaskan tadi benar-benar berjalan."
+
+```cmd
+mysql -u root -p
+```
+```sql
+USE akademik_db;
+```
+
+## Test Case 7: CREATE
+
+**SKRIP:**
+"Pertama, operasi CREATE, menambahkan mahasiswa baru."
+
+```sql
+INSERT INTO mahasiswa VALUES ('5027231009','Demo Testing',2024,'Informatika','aktif');
+SELECT * FROM mahasiswa WHERE nrp = '5027231009';
+```
+
+**PEMAHAMAN MATERI:**
+Operasi paling dasar, tidak banyak yang perlu dijelaskan kecuali kalau dosen tanya soal urutan kolom di VALUES — itu harus sesuai urutan kolom didefinisikan di DDL (nrp, nama, angkatan, program_studi, status).
+
+## Test Case 8: UPDATE Biasa
+
+**SKRIP:**
+"Selanjutnya, operasi UPDATE biasa, mengubah program studi mahasiswa ini."
+
+```sql
+UPDATE mahasiswa SET program_studi = 'Sistem Informasi' WHERE nrp = '5027231009';
+SELECT * FROM mahasiswa WHERE nrp = '5027231009';
+```
+
+**PEMAHAMAN MATERI:**
+Tujuan dari UPDATE biasa ini sebelum UPDATE status adalah pembanding: tunjukkan bahwa UPDATE kolom selain status TIDAK memicu trigger apa pun. Kalau diminta buktikan, bisa cek `SELECT * FROM mahasiswa_alumni` di sini dulu — jumlahnya masih sama seperti sebelumnya, karena trigger after_update_status_mahasiswa hanya bereaksi pada perubahan kolom status, bukan kolom lain.
+
+## Test Case 9: UPDATE yang Memicu Trigger Alumni
+
+**SKRIP:**
+"Sekarang yang paling penting: kami akan mengubah status mahasiswa ini menjadi pindah, untuk membuktikan trigger after_update_status_mahasiswa bekerja secara otomatis."
+
+```sql
+UPDATE mahasiswa SET status = 'pindah' WHERE nrp = '5027231009';
+SELECT * FROM mahasiswa_alumni;
+```
+
+"Seperti terlihat, tanpa kami melakukan INSERT manual ke tabel mahasiswa_alumni, data ini otomatis muncul di sana, dengan keterangan pindah."
+
+**PEMAHAMAN MATERI:**
+Ini test case paling penting di seluruh sesi CRUD. Pastikan betul-betul menunjukkan isi mahasiswa_alumni SEBELUM dan SESUDAH UPDATE ini, supaya perubahannya jelas terlihat. Kalau dosen tanya "coba update lagi statusnya jadi lulus, apa yang terjadi?" — jawaban yang benar: trigger tidak akan terpicu lagi untuk perubahan dari 'pindah' ke 'lulus', KARENA kondisi triggernya hanya cek `OLD.status != NEW.status` DAN `NEW.status IN (...)` — jadi sebenarnya tetap akan terpicu (karena status berubah dan status baru termasuk dalam daftar), TAPI akan menghasilkan ENTRI BARU lagi di mahasiswa_alumni (duplikat untuk nrp yang sama), bukan mengupdate entri yang sudah ada. Ini limitation yang valid untuk diakui kalau ditanya — desain saat ini tidak mengecek duplikasi di tabel alumni.
+
+## Test Case 10: DELETE yang Memicu Trash
+
+**SKRIP:**
+"Selanjutnya, operasi DELETE. Kami akan menghapus mahasiswa ini, dan menunjukkan bahwa datanya tidak langsung hilang, melainkan diarsipkan ke tabel trash."
+
+```sql
+DELETE FROM mahasiswa WHERE nrp = '5027231009';
+SELECT * FROM trash WHERE nama_tabel = 'mahasiswa' ORDER BY deleted_at DESC LIMIT 1;
+```
+
+"Terlihat data yang baru dihapus tersimpan dalam format JSON di tabel trash, lengkap dengan waktu penghapusannya."
+
+**PEMAHAMAN MATERI:**
+Kalau mahasiswa ini sebelumnya masih punya entri KRS yang aktif, DELETE ini akan GAGAL karena foreign key constraint (seperti yang sempat dialami kemarin). Solusinya jika itu terjadi saat demo: hapus dulu entri KRS dan Nilai terkait sebelum menghapus mahasiswa-nya, atau pilih nrp lain yang memang tidak punya KRS terkait sama sekali (seperti nrp demo yang baru dibuat di test case 7, yang memang belum pernah didaftarkan ke KRS apa pun — ini aman dihapus langsung).
+
+## Test Case 11: Buktikan Trash Bisa Diakses dari Backend
+
+**SKRIP:**
+"Untuk menutup sesi CRUD, kami akan kembali ke terminal backend, dan menunjukkan bahwa data yang baru kami hapus ini juga bisa diakses melalui endpoint API, bukan hanya lewat database secara langsung."
+
+```sql
+exit;
+```
+```cmd
+curl http://localhost:3000/trash
+```
+
+"Seperti terlihat, data yang sama persis yang baru kami lihat di MySQL, sekarang juga muncul lewat backend."
+
+**PEMAHAMAN MATERI:**
+Ini penutup yang elegan karena membuktikan dua hal sekaligus dalam satu test case: mekanisme soft-delete di level database BENAR berjalan, dan endpoint backend yang dibuat KHUSUS untuk mengakses arsip itu juga berfungsi. Ini menyatukan kembali jalur "demo live terminal" dan "CRUD" yang sempat berpisah jadi dua sesi.
+
+---
+
+# BAGIAN 5 — PENJELASAN KODE DAN QUERY
+
+Bagian ini fleksibel sesuai waktu yang tersisa. Urutan prioritas kalau waktu terbatas: trigger dulu, lalu view, lalu route ordering. Kalau waktu masih banyak, bisa tambah index.js dan config/mysql.js.
+
+## Penjelasan ddl.sql — Struktur Tabel
+
+**SKRIP:**
+"Untuk struktur tabel, kami ingin menyoroti tabel KRS sebagai contoh. Awalnya pada tahap normalisasi 1NF, primary key tabel ini adalah gabungan tiga kolom: nrp, kode_mk, dan id_semester. Pada implementasi final, kami menggunakan id_krs sebagai primary key auto increment, sementara ketiga kolom tersebut tetap dipertahankan sebagai foreign key, supaya relasinya tetap valid."
+
+**PEMAHAMAN MATERI:**
+Kalau ditanya kenapa tidak pakai composite key langsung sebagai PK: karena foreign key yang merujuk ke composite key (tiga kolom sekaligus) lebih berat dan rumit dibanding merujuk ke satu kolom integer. Misalnya tabel Nilai yang punya FK ke KRS — kalau PK KRS itu tiga kolom, FK di Nilai juga harus tiga kolom. Dengan id_krs sebagai PK tunggal, FK di Nilai cukup satu kolom saja (id_krs), lebih ringkas dan efisien.
+
+## Penjelasan Trigger (BEFORE DELETE dan AFTER UPDATE)
+
+Sudah dijelaskan detail di slide 8 dan 9 — bagian ini cukup mengulang singkat sambil menunjukkan kode aslinya langsung dari file, bukan dari slide.
+
+**SKRIP:**
+"Seperti yang sudah kami jelaskan di presentasi, trigger before_delete bekerja sebelum penghapusan data, menyalin ke tabel trash. Trigger after_update_status_mahasiswa bekerja setelah status berubah, menyalin data ke tabel mahasiswa_alumni."
+
+## Penjelasan View
+
+Sudah dijelaskan di slide 7 — cukup tunjukkan ulang file aslinya dan highlight bagian GROUP BY dan HAVING.
+
+## Penjelasan index.js dan Routing
+
+**SKRIP:**
+"Pada file index.js, ini adalah entry point aplikasi kami. Setiap request yang masuk dengan alamat diawali /mahasiswa akan diarahkan ke file routes/mahasiswa.js, begitu juga untuk /nilai, /krs, dan /trash."
 
 ```javascript
-const mysql = require('mysql2');
-require('dotenv').config();
+app.use('/mahasiswa', require('./routes/mahasiswa'));
+app.use('/nilai',     require('./routes/nilai'));
+app.use('/krs',       require('./routes/krs'));
+app.use('/trash',     require('./routes/trash'));
+```
 
+**PEMAHAMAN MATERI:**
+Poin teknis yang sering ditanya: kenapa urutan route di dalam routes/mahasiswa.js itu penting?
+
+```javascript
+router.get('/alumni/list', ...);
+router.get('/mengulang/list', ...);
+router.get('/', ...);
+router.get('/:nrp', ...);
+```
+
+`:nrp` adalah parameter dinamis yang akan menangkap APAPUN yang ditulis di posisi itu sebagai nilai nrp. Kalau urutannya dibalik — `/:nrp` ditulis sebelum `/alumni/list` — maka request ke `/mahasiswa/alumni/list` akan dianggap Express sebagai permintaan detail mahasiswa dengan nrp bernilai "alumni", bukan permintaan ke endpoint alumni yang sebenarnya. Itu sebabnya route yang spesifik harus selalu diletakkan SEBELUM route yang generik dengan parameter dinamis.
+
+## Penjelasan config/mysql.js
+
+**SKRIP:**
+"Terakhir, file config/mysql.js ini adalah jembatan koneksi ke database, menggunakan connection pooling seperti yang sudah dijelaskan sebelumnya."
+
+```javascript
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DB
 });
-
 module.exports = pool.promise();
 ```
 
-### `routes\mahasiswa.js`
-
-```javascript
-const express = require('express');
-const router = express.Router();
-const db = require('../config/mysql');
-
-// route spesifik diletakkan SEBELUM /:nrp supaya tidak ketangkep jadi parameter nrp
-router.get('/alumni/list', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM mahasiswa_alumni');
-        res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/mengulang/list', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM view_mahasiswa_mengulang');
-        res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM mahasiswa');
-        res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/:nrp', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM mahasiswa WHERE nrp = ?', [req.params.nrp]);
-        if (!rows.length) return res.status(404).json({ message: 'Tidak ditemukan' });
-        res.json(rows[0]);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.post('/', async (req, res) => {
-    const { nrp, nama, angkatan, program_studi, status } = req.body;
-    try {
-        await db.query('INSERT INTO mahasiswa VALUES (?,?,?,?,?)',
-            [nrp, nama, angkatan, program_studi, status || 'aktif']);
-        res.status(201).json({ message: 'Mahasiswa ditambahkan' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.put('/:nrp', async (req, res) => {
-    const { nama, angkatan, program_studi, status } = req.body;
-    try {
-        await db.query(
-            'UPDATE mahasiswa SET nama=?, angkatan=?, program_studi=?, status=? WHERE nrp=?',
-            [nama, angkatan, program_studi, status, req.params.nrp]);
-        res.json({ message: 'Mahasiswa diupdate' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.delete('/:nrp', async (req, res) => {
-    try {
-        await db.query('DELETE FROM mahasiswa WHERE nrp = ?', [req.params.nrp]);
-        res.json({ message: 'Mahasiswa dihapus, data masuk trash' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-module.exports = router;
-```
-
-### `routes\nilai.js`
-
-```javascript
-const express = require('express');
-const router = express.Router();
-const db = require('../config/mysql');
-
-router.get('/ipk', async (req, res) => {
-    try {
-        const [rows] = await db.query(`
-            SELECT m.nrp, m.nama, m.program_studi,
-                   ROUND(SUM(n.nilai_angka * mk.sks) / SUM(mk.sks), 2) AS ipk,
-                   SUM(mk.sks) AS total_sks
-            FROM mahasiswa m
-            JOIN krs k ON m.nrp = k.nrp
-            JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-            JOIN nilai n ON k.id_krs = n.id_nilai
-            WHERE k.status = 'aktif'
-            GROUP BY m.nrp, m.nama, m.program_studi
-            ORDER BY ipk DESC
-        `);
-        res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.post('/', async (req, res) => {
-    const { id_krs, nilai_huruf, nilai_angka } = req.body;
-    try {
-        await db.query(
-            'INSERT INTO nilai (id_krs, nilai_huruf, nilai_angka) VALUES (?,?,?)',
-            [id_krs, nilai_huruf, nilai_angka]);
-        res.status(201).json({ message: 'Nilai diinput' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-module.exports = router;
-```
-
-### `routes\krs.js`
-
-```javascript
-const express = require('express');
-const router = express.Router();
-const db = require('../config/mysql');
-
-router.get('/:nrp/semester/:id_semester', async (req, res) => {
-    try {
-        const [rows] = await db.query(`
-            SELECT mk.nama_mk, mk.sks, n.nilai_huruf, n.nilai_angka,
-                   s.tahun, s.periode
-            FROM krs k
-            JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-            JOIN nilai n ON k.id_krs = n.id_nilai
-            JOIN semester s ON k.id_semester = s.id_semester
-            WHERE k.nrp = ? AND k.id_semester = ?
-        `, [req.params.nrp, req.params.id_semester]);
-        res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.post('/', async (req, res) => {
-    const { nrp, kode_mk, id_semester } = req.body;
-    try {
-        await db.query(
-            'INSERT INTO krs (nrp, kode_mk, id_semester) VALUES (?,?,?)',
-            [nrp, kode_mk, id_semester]);
-        res.status(201).json({ message: 'KRS ditambahkan' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-module.exports = router;
-```
-
-### `index.js`
-
-```javascript
-const express = require('express');
-require('dotenv').config();
-
-const app = express();
-app.use(express.json());
-
-app.use('/mahasiswa', require('./routes/mahasiswa'));
-app.use('/nilai',     require('./routes/nilai'));
-app.use('/krs',       require('./routes/krs'));
-
-app.listen(process.env.PORT, () => {
-    console.log(`Server jalan di port ${process.env.PORT}`);
-});
-```
-
-### Update `README.md` — tambahkan bagian Endpoint di paling bawah
-
-```markdown
-## Endpoint
-GET    /mahasiswa                 semua mahasiswa
-GET    /mahasiswa/:nrp            detail mahasiswa
-POST   /mahasiswa                 tambah mahasiswa
-PUT    /mahasiswa/:nrp            update mahasiswa
-DELETE /mahasiswa/:nrp            hapus (masuk trash otomatis)
-GET    /mahasiswa/alumni/list     daftar mahasiswa lulus/pindah
-GET    /mahasiswa/mengulang/list  daftar mahasiswa yang mengulang matkul
-GET    /nilai/ipk                 ranking IPK semua mahasiswa
-POST   /nilai                     input nilai
-GET    /krs/:nrp/semester/:id     KHS per semester
-POST   /krs                       tambah KRS
-```
-
-### Commit & Push (Lo)
-
-```cmd
-npm install express mysql2 dotenv
-
-git add .
-git commit -m "feat: config mysql, semua routes (termasuk alumni & mengulang), index.js"
-git push origin backend
-```
+**PEMAHAMAN MATERI:**
+`.promise()` di akhir itu mengubah cara pemanggilan query dari gaya callback (lama) menjadi gaya async/await (lebih modern dan mudah dibaca). Ini yang memungkinkan penulisan kode seperti `const [rows] = await db.query(...)` di file routes, bukan pakai callback bersarang yang lebih rumit dibaca.
 
 ---
 
-## BAGIAN RAPA — Laporan (branch `laporan`)
+# PENUTUP
 
-```cmd
-git clone https://github.com/username-lo/FP-SBD-085-076-079.git
-cd FP-SBD-085-076-079
-git checkout dev
-git pull origin dev
-git checkout -b laporan
-```
-
-Isi folder `docs\` dengan:
-- File Excel normalisasi v3 (data mentah -> 1NF -> 2NF -> 3NF, sudah termasuk kasus Fajar mengulang dan tabel `MAHASISWA_ALUMNI`)
-- Laporan formal (docx/PDF) berisi ERD final, normalisasi, struktur tabel, dan penjelasan fitur tambahan
-- Penjelasan kenapa data alumni **disalin** bukan **dipindah** dari tabel `mahasiswa` — karena FK dari `krs` dan `nilai` ke `mahasiswa.nrp` akan rusak kalau dipindah
-
-```cmd
-git add docs\
-git commit -m "docs: ERD final, normalisasi v3 (kasus mengulang + tabel alumni), laporan"
-git push origin laporan
-```
+**SKRIP:**
+"Demikian presentasi dan demonstrasi dari kelompok kami. Sistem ini telah berhasil memenuhi seluruh kebutuhan normalisasi data hingga 3NF, serta dua kebutuhan tambahan dari dosen wali, yaitu pemantauan mata kuliah yang diulang dan pengarsipan mahasiswa lulus atau pindah, tanpa mengorbankan integritas data pada tabel utama. Kami terbuka untuk pertanyaan."
 
 ---
 
-## MERGE KE DEV (Lo) — Lakukan Bertahap, Jangan Tunggu Semua
+# CATATAN UMUM UNTUK SEMUA SESI
 
-Begitu branch `database` siap (biasanya paling cepat, prioritaskan):
+Hindari kata "memindahkan" terkait tabel mahasiswa_alumni — selalu gunakan "menyalin" atau "mengarsipkan".
 
-```cmd
-git checkout dev
-git pull origin dev
-git merge database
-git push origin dev
-```
+Kalau ditanya soal validasi input atau keamanan (otentikasi), jawab jujur bahwa itu di luar scope FP ini dan menjadi catatan untuk pengembangan lebih lanjut — jangan berusaha mengklaim sistem ini punya fitur yang sebenarnya tidak ada.
 
-Begitu branch `backend` siap:
-
-```cmd
-git merge backend
-git push origin dev
-```
-
-Begitu branch `laporan` siap:
-
-```cmd
-git merge laporan
-git push origin dev
-```
-
-**Kalau ada conflict** (biasanya di `README.md` karena dua orang edit file yang sama):
-
-```cmd
-:: VS Code highlight bagian yang conflict
-:: Buka file, cari tanda:
-:: <<<<<<< HEAD
-:: ...versi dev...
-:: =======
-:: ...versi branch lain...
-:: >>>>>>> nama-branch
-
-:: Pilih yang benar, hapus semua tanda <<<, ===, >>>
-git add .
-git commit -m "fix: resolve conflict"
-git push origin dev
-```
-
----
-
-## TEST LOKAL (Selasa Pagi)
-
-```cmd
-git checkout dev
-git pull origin dev
-
-copy .env.example .env
-code .env
-```
-
-Isi `.env`:
-```
-MYSQL_HOST=localhost
-MYSQL_USER=root
-MYSQL_PASSWORD=isi_password_lo
-MYSQL_DB=akademik_db
-PORT=3000
-```
-
-Setup database:
-
-```cmd
-mysql -u root -p < sql\ddl.sql
-mysql -u root -p akademik_db < sql\dml.sql
-```
-
-Jalankan server:
-
-```cmd
-npm install
-node index.js
-```
-
-Test semua endpoint:
-
-```cmd
-curl http://localhost:3000/mahasiswa
-curl http://localhost:3000/mahasiswa/5027231001
-curl http://localhost:3000/mahasiswa/alumni/list
-curl http://localhost:3000/mahasiswa/mengulang/list
-curl http://localhost:3000/nilai/ipk
-curl http://localhost:3000/krs/5027231001/semester/1
-```
-
-Hasil yang diharapkan:
-- `/mahasiswa/alumni/list` -> muncul Hadi Santoso (lulus)
-- `/mahasiswa/mengulang/list` -> muncul Fajar Nugroho, IF2110, jumlah_ambil = 2
-
-Test trigger alumni (live, langsung di MySQL):
-
-```sql
-UPDATE mahasiswa SET status = 'lulus' WHERE nrp = '5027231005';
-SELECT * FROM mahasiswa_alumni;
-```
-
-Eka Putri harus otomatis muncul di `mahasiswa_alumni` tanpa di-INSERT manual — ini bukti trigger jalan.
-
----
-
-## FINAL MERGE KE MAIN (Selasa Sore)
-
-```cmd
-git checkout main
-git pull origin main
-git merge dev
-git push origin main
-```
-
----
-
-## CHECKLIST DEMO (Selasa Malam)
-
-Tiap orang harus bisa:
-
-**Hugo** — jelasin tiap tabel di `ddl.sql`, kenapa trigger `before_delete_*` beda dari `after_update_status_mahasiswa` (BEFORE vs AFTER, DELETE vs UPDATE), dan cara kerja view `view_mahasiswa_mengulang` (GROUP BY + HAVING COUNT > 1).
-
-**Lo** — jelasin alur request masuk dari `index.js` -> `routes/*.js` -> `config/mysql.js` -> MySQL, dan kenapa route `/alumni/list` & `/mengulang/list` diletakkan sebelum `/:nrp`.
-
-**Rapa** — jelasin proses normalisasi 1NF->3NF pakai data Fajar sebagai contoh konkret "mengulang", dan kenapa `mahasiswa_alumni` itu tabel arsip (disalin) bukan pemindahan data.
-
-**Semua** — siap kalau diminta tulis ulang salah satu query dari nol, atau modifikasi tabel/data on-the-spot saat demo.
-
----
-
-## CHEATSHEET GIT
-
-```cmd
-git status               :: cek file yang berubah
-git branch                :: lihat semua branch
-git checkout nama-branch  :: pindah branch
-git checkout -b nama-baru :: bikin branch baru, pindah ke situ
-git pull origin dev       :: ambil update terbaru dari dev
-git add .                 :: tandai semua perubahan
-git commit -m "pesan"     :: bikin snapshot
-git push origin branch    :: upload ke GitHub
-git merge nama-branch     :: gabungin branch lain ke branch sekarang
-git log --oneline         :: lihat riwayat commit
-```
+Kalau ada error teknis saat demo live (server tidak nyala, password salah, dll), tetap tenang, jelaskan ke dosen apa yang terjadi sambil memperbaikinya — itu lebih baik dibanding terlihat panik atau mencoba menyembunyikan masalah.
