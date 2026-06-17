@@ -190,6 +190,7 @@ Pastikan sudah dilakukan SEBELUM sesi presentasi mulai:
 mysql -u root -p -e "DROP DATABASE IF EXISTS akademik_db;"
 mysql -u root -p < sql\ddl.sql
 mysql -u root -p akademik_db < sql\dml.sql
+ysql -u root -p akademik_db < sql\query.sql
 ```
 Server BELUM dinyalakan — supaya bagian menyalakan server kelihatan sebagai bagian dari demo live, bukan sudah disiapkan dari sebelumnya.
 
